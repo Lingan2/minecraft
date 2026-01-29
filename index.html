@@ -1,0 +1,222 @@
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Browser 3D Minecraft Clone</title>
+<style>
+body { margin:0; overflow:hidden; }
+canvas { display:block; }
+#console{
+    position:absolute;
+    bottom:0; left:0;
+    width:100%;
+    background:rgba(0,0,0,0.7);
+    color:white;
+    font-family:sans-serif;
+    padding:5px;
+    z-index:100;
+}
+#console input{
+    width:100%;
+    background:black;
+    color:white;
+    border:none;
+    outline:none;
+    padding:5px;
+    font-size:16px;
+}
+</style>
+</head>
+<body>
+<div id="console">
+<input id="commandInput" placeholder="Type command here..."/>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
+<script>
+// === Basic Three.js Setup ===
+let scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+let renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Light
+let light = new THREE.DirectionalLight(0xffffff,1);
+light.position.set(10,20,10);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff,0.3));
+
+// Controls
+let controls = new THREE.PointerLockControls(camera, renderer.domElement);
+document.body.addEventListener('click',()=>controls.lock());
+scene.add(controls.getObject());
+
+// Block size
+const blockSize = 1;
+
+// Materials
+const materials = {
+    grass: new THREE.MeshPhongMaterial({color:0x00ff00}),
+    dirt: new THREE.MeshPhongMaterial({color:0x964B00}),
+    stone: new THREE.MeshPhongMaterial({color:0x888888}),
+    wood: new THREE.MeshPhongMaterial({color:0x8B4513}),
+    leaves: new THREE.MeshPhongMaterial({color:0x00AA00})
+};
+
+// Block array
+let blocks = [];
+
+// Inventory (simple)
+let inventory = [];
+
+// Survival / Creative
+let gamemode = "survival";
+
+// Generate flat terrain
+for(let x=-10;x<=10;x++){
+    for(let z=-10;z<=10;z++){
+        let geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+        let cube = new THREE.Mesh(geometry, materials.grass);
+        cube.position.set(x,0,z);
+        scene.add(cube);
+        blocks.push(cube);
+    }
+}
+
+// Camera position
+camera.position.y = 2;
+camera.position.z = 5;
+
+// Movement
+let moveForward=false, moveBackward=false, moveLeft=false, moveRight=false;
+let velocity = new THREE.Vector3();
+document.addEventListener('keydown', e=>{
+    if(e.code==='KeyW') moveForward=true;
+    if(e.code==='KeyS') moveBackward=true;
+    if(e.code==='KeyA') moveLeft=true;
+    if(e.code==='KeyD') moveRight=true;
+});
+document.addEventListener('keyup', e=>{
+    if(e.code==='KeyW') moveForward=false;
+    if(e.code==='KeyS') moveBackward=false;
+    if(e.code==='KeyA') moveLeft=false;
+    if(e.code==='KeyD') moveRight=false;
+});
+
+// Raycaster for blocks
+let raycaster = new THREE.Raycaster();
+let mouse = new THREE.Vector2();
+renderer.domElement.addEventListener('mousedown', e=>{
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = - (e.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse,camera);
+    let intersects = raycaster.intersectObjects(blocks);
+    if(intersects.length>0){
+        let selected = intersects[0].object;
+        if(e.button===0){ // Left click = remove
+            scene.remove(selected);
+            blocks = blocks.filter(b=>b!==selected);
+        } else if(e.button===2){ // Right click = add
+            if(gamemode==="survival" && inventory.length===0) return;
+            let normal = intersects[0].face.normal;
+            let pos = selected.position.clone().add(normal);
+            let geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+            let cube = new THREE.Mesh(geometry, materials.dirt);
+            cube.position.copy(pos);
+            scene.add(cube);
+            blocks.push(cube);
+            if(gamemode==="survival") inventory.pop(); // use one block
+        }
+    }
+});
+document.addEventListener('contextmenu', e=>e.preventDefault());
+
+// Day/Night cycle
+let clock = new THREE.Clock();
+let dayTime = 0;
+function updateDayNight(){
+    dayTime += 0.001;
+    scene.background = new THREE.Color().setHSL(0.6,0.6,Math.sin(dayTime)*0.5+0.5);
+}
+
+// Commands
+const commandInput = document.getElementById("commandInput");
+commandInput.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+        const command = commandInput.value.trim();
+        processCommand(command);
+        commandInput.value="";
+    }
+});
+
+function processCommand(cmd){
+    let args = cmd.split(" ");
+    switch(args[0]){
+        case "/gamemode":
+            if(args[1]==="creative"||args[1]==="survival"||args[1]==="spectator"){
+                gamemode=args[1];
+                alert("Gamemode set to "+gamemode);
+            }
+            break;
+        case "/give":
+            let item = args[1]||"dirt";
+            inventory.push(item);
+            alert("Added "+item+" to inventory");
+            break;
+        case "/structure":
+            spawnStructure(args[1]);
+            break;
+        default:
+            alert("Unknown command");
+    }
+}
+
+// Structure spawn
+function spawnStructure(name){
+    if(name==="house"){
+        for(let x=0;x<3;x++){
+            for(let y=0;y<3;y++){
+                for(let z=0;z<3;z++){
+                    let geom = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+                    let mat = (y===2)?materials.wood:materials.dirt;
+                    let cube = new THREE.Mesh(geom, mat);
+                    cube.position.set(camera.position.x+x, camera.position.y+y-1, camera.position.z+z);
+                    scene.add(cube);
+                    blocks.push(cube);
+                }
+            }
+        }
+        alert("House spawned!");
+    }
+}
+
+// Animate loop
+function animate(){
+    requestAnimationFrame(animate);
+    let delta = clock.getDelta();
+    velocity.set(0,0,0);
+    let speed = 5 * delta;
+    if(moveForward) velocity.z -= speed;
+    if(moveBackward) velocity.z += speed;
+    if(moveLeft) velocity.x -= speed;
+    if(moveRight) velocity.x += speed;
+    controls.moveRight(velocity.x);
+    controls.moveForward(velocity.z);
+
+    updateDayNight();
+    renderer.render(scene,camera);
+}
+animate();
+
+// Resize
+window.addEventListener('resize',()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
