@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minecraft Asan Commandlar</title>
   <style>
     body {
@@ -13,6 +13,7 @@
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+      margin: 0;
     }
     .card {
       background: #0f172a;
@@ -29,6 +30,7 @@
       padding: 8px;
       border-radius: 6px;
       border: none;
+      font-size: 14px;
     }
     button {
       background: #22c55e;
@@ -42,6 +44,7 @@
       border-radius: 6px;
       font-size: 14px;
       overflow-x: auto;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -84,14 +87,15 @@
     </select>
     <button onclick="placeOre()">Ore qoy</button>
 
-    <h2>🛠️ GameMode (F4 ilə dəyişir)</h2>
-    <p>F4 düyməsinə basanda növbə ilə Creative → Spectator → Survival → Adventure</p>
+    <h2>🛠️ GameMode Toggle</h2>
+    <p>Virtual düymə ilə Creative → Spectator → Survival → Adventure</p>
+    <button onclick="nextGameMode()">Next Gamemode</button>
 
     <pre id="output">Command burada çıxacaq</pre>
   </div>
 
   <script>
-    let gameModes = ['creative', 'spectator', 'survival', 'adventure'];
+    const gameModes = ['creative', 'spectator', 'survival', 'adventure'];
     let currentModeIndex = 0;
 
     function playerName() {
@@ -118,18 +122,14 @@
       output(`/setblock ~ ~ ~ ${ore}`);
     }
 
+    function nextGameMode() {
+      currentModeIndex = (currentModeIndex + 1) % gameModes.length;
+      output(`/gamemode ${gameModes[currentModeIndex]} ${playerName()}`);
+    }
+
     function output(cmd) {
       document.getElementById('output').innerText = cmd;
     }
-
-    // F4 düyməsi ilə gamemode dəyişmək
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'F4') {
-        e.preventDefault(); // browser defaultunu dayandırır
-        currentModeIndex = (currentModeIndex + 1) % gameModes.length;
-        output(`/gamemode ${gameModes[currentModeIndex]} ${playerName()}`);
-      }
-    });
   </script>
 </body>
 </html>
