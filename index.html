@@ -84,8 +84,8 @@
     </select>
     <button onclick="placeOre()">Ore qoy</button>
 
-    <h2>🛠️ GameMode (F3/F4 ilə dəyişir)</h2>
-    <p>F3 + F4 düymələrinə basanda növbə ilə Creative → Spectator → Survival → Adventure</p>
+    <h2>🛠️ GameMode (F4 ilə dəyişir)</h2>
+    <p>F4 düyməsinə basanda növbə ilə Creative → Spectator → Survival → Adventure</p>
 
     <pre id="output">Command burada çıxacaq</pre>
   </div>
@@ -122,8 +122,10 @@
       document.getElementById('output').innerText = cmd;
     }
 
+    // F4 düyməsi ilə gamemode dəyişmək
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'F4' && e.getModifierState('Fn') === false) { // F4 alone
+      if (e.key === 'F4') {
+        e.preventDefault(); // browser defaultunu dayandırır
         currentModeIndex = (currentModeIndex + 1) % gameModes.length;
         output(`/gamemode ${gameModes[currentModeIndex]} ${playerName()}`);
       }
