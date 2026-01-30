@@ -3,65 +3,87 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>3D Minecraft Clone</title>
+<title>3D Minecraft Classic Demo + Crafting + Mobs + Shift Craft</title>
 <style>
-body {
-  margin: 0;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-}
+body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
 #startScreen {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0,0,0,0.8);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
+  position:absolute; top:0; left:0; width:100vw; height:100vh;
+  background: rgba(0,0,0,0.85); color:white;
+  display:flex; flex-direction:column; justify-content:center; align-items:center;
+  z-index:10;
 }
-#startScreen h1 { font-size: 36px; margin-bottom: 20px; }
-#startScreen ul { list-style: none; padding: 0; }
-#startScreen button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  font-size: 18px;
-  cursor: pointer;
+#startScreen h1 { font-size:36px; margin-bottom:20px; }
+#startScreen ul { list-style:none; padding:0; }
+#startScreen select, #startScreen button { margin-top:10px; padding:8px 12px; font-size:16px; }
+#inventory {
+  position:absolute; top:10px; left:10px; color:white; font-size:16px; z-index:5;
+  background: rgba(0,0,0,0.5); padding:10px; border-radius:8px;
 }
-canvas { display: block; }
+#crafting {
+  position:absolute; bottom:10px; left:10px; color:white; font-size:16px; z-index:5;
+  background: rgba(0,0,0,0.5); padding:10px; border-radius:8px;
+  cursor:pointer;
+}
+canvas { display:block; }
 </style>
 </head>
 <body>
+
 <div id="startScreen">
-  <h1>Minecraft 3D Game</h1>
-  <p>Inventory:</p>
+  <h1>Minecraft Classic 3D Demo</h1>
+  <p>Başlanğıc Inventory:</p>
   <ul>
-    <li>Taş ×10</li>
-    <li>Torpaq ×10</li>
-    <li>Diamond ×5</li>
+    <li>Diamond Pickaxe ×1</li>
+    <li>Stone ×20</li>
+    <li>Diamond Block ×5</li>
   </ul>
+  <p>Dünyanın ölçüsünü seçin:</p>
+  <select id="worldSize">
+    <option value="10">Kiçik</option>
+    <option value="20" selected>Normal</option>
+    <option value="40">Böyük</option>
+  </select>
   <button onclick="startGame()">Oyuna Başla</button>
 </div>
+
+<div id="inventory">Inventory: Diamond Pickaxe ×1, Stone ×20, Diamond Block ×5</div>
+<div id="crafting" title="Click and hold to craft">Crafting Table: Stone + Stone → Diamond Block</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
+// GLOBALS
 let scene, camera, renderer;
-let player = {x:0, y:1.6, z:0};
+let player = {x:0, y:1.6, z:0, velocityY:0};
 let keys = {};
 let blocks = [];
+let mobs = [];
+let structures = [];
 let blockSize = 1;
+let worldLimit = 20;
+let gravity = -0.05;
+let onGround = true;
 
+// INVENTORY
+let inventory = {
+  diamond_pickaxe:1,
+  stone:20,
+  diamond_block:5
+};
+
+// Crafting state
+let craftingActive = false;
+let shiftPressed = false;
+
+// START GAME
 function startGame() {
+  worldLimit = parseInt(document.getElementById('worldSize').value);
   document.getElementById('startScreen').style.display = 'none';
   init();
   animate();
 }
 
+// INIT THREE.JS
 function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87CEEB);
@@ -73,11 +95,16 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // Ground
+  // LIGHT
+  const light = new THREE.DirectionalLight(0xffffff,1);
+  light.position.set(5,10,7.5);
+  scene.add(light);
+
+  // GROUND (flat shader style)
   let geometry = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-  let material = new THREE.MeshStandardMaterial({color:0x228B22});
-  for(let x=-10;x<=10;x++){
-    for(let z=-10;z<=10;z++){
+  let material = new THREE.MeshStandardMaterial({color:0x228B22, flatShading:true});
+  for(let x=-worldLimit;x<=worldLimit;x++){
+    for(let z=-worldLimit;z<=worldLimit;z++){
       let cube = new THREE.Mesh(geometry, material);
       cube.position.set(x,0,z);
       scene.add(cube);
@@ -85,59 +112,166 @@ function init() {
     }
   }
 
-  // Light
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(5,10,7.5);
-  scene.add(light);
+  // STRUCTURES (ev + ağac)
+  createStructures();
 
-  // Event listeners
-  document.addEventListener('keydown', e=>keys[e.key.toLowerCase()]=true);
-  document.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
+  // MOBS
+  createMobs();
+
+  // EVENTS
+  document.addEventListener('keydown', e=>{
+    keys[e.key.toLowerCase()]=true;
+    if(e.key==='Shift') shiftPressed=true;
+  });
+  document.addEventListener('keyup', e=>{
+    keys[e.key.toLowerCase()]=false;
+    if(e.key==='Shift') shiftPressed=false;
+  });
+  document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mouseup', ()=>craftingActive=false);
   window.addEventListener('resize', onWindowResize);
 
-  // Mouse click
-  document.addEventListener('mousedown', onMouseDown);
+  // Crafting hold
+  let craftDiv = document.getElementById('crafting');
+  craftDiv.addEventListener('mousedown', ()=>craftingActive=true);
+  craftDiv.addEventListener('mouseup', ()=>craftingActive=false);
 }
 
+// WINDOW RESIZE
 function onWindowResize() {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// Minimal block place/remove
-function onMouseDown(event) {
+// BLOCK PLACE / REMOVE
+function onMouseDown(event){
   let raycaster = new THREE.Raycaster();
-  let mouse = new THREE.Vector2(0,0); // center of screen
-  raycaster.setFromCamera(mouse, camera);
-  let intersects = raycaster.intersectObjects(blocks);
+  let mouse = new THREE.Vector2(0,0);
+  raycaster.setFromCamera(mouse,camera);
+  let intersects = raycaster.intersectObjects([...blocks,...structures,...mobs]);
   if(intersects.length>0){
     let obj = intersects[0].object;
-    if(event.button===0){ // sol klik = remove
-      scene.remove(obj);
-      blocks = blocks.filter(b=>b!==obj);
-    } else if(event.button===2){ // sağ klik = place
-      let newCube = obj.clone();
-      newCube.position.y += blockSize;
-      scene.add(newCube);
-      blocks.push(newCube);
+    if(event.button===0){ // sol klik qır
+      if(blocks.includes(obj)) { scene.remove(obj); blocks = blocks.filter(b=>b!==obj); }
+      if(mobs.map(m=>m.mesh).includes(obj)) { 
+        let mobObj = mobs.find(m=>m.mesh===obj);
+        scene.remove(mobObj.mesh);
+        mobs = mobs.filter(m=>m!==mobObj);
+      }
+    } else if(event.button===2){ // sağ klik qoy
+      if(inventory.stone>0){
+        let newCube = new THREE.Mesh(obj.geometry.clone(), obj.material.clone());
+        newCube.position.y += blockSize;
+        scene.add(newCube);
+        blocks.push(newCube);
+        inventory.stone--;
+        updateInventoryUI();
+      }
     }
   }
 }
 
-// Player movement
-function animate() {
+// CREATE STRUCTURES
+function createStructures(){
+  let geo = new THREE.BoxGeometry(blockSize,blockSize,blockSize);
+  let mat = new THREE.MeshStandardMaterial({color:0x8B4513, flatShading:true});
+  let baseX = Math.floor(Math.random()*worldLimit*0.5);
+  let baseZ = Math.floor(Math.random()*worldLimit*0.5);
+  for(let y=0;y<3;y++){
+    for(let x=0;x<3;x++){
+      for(let z=0;z<3;z++){
+        let cube = new THREE.Mesh(geo,mat);
+        cube.position.set(baseX+x, y+1, baseZ+z);
+        scene.add(cube);
+        structures.push(cube);
+      }
+    }
+  }
+
+  // Ağac
+  let trunkMat = new THREE.MeshStandardMaterial({color:0x8B4513, flatShading:true});
+  let leavesMat = new THREE.MeshStandardMaterial({color:0x00FF00, flatShading:true});
+  let treeX = -Math.floor(Math.random()*worldLimit*0.5);
+  let treeZ = -Math.floor(Math.random()*worldLimit*0.5);
+  for(let y=0;y<4;y++){
+    let trunk = new THREE.Mesh(geo,trunkMat);
+    trunk.position.set(treeX,y+1,treeZ);
+    scene.add(trunk);
+    structures.push(trunk);
+  }
+  for(let x=-1;x<=1;x++){
+    for(let y=3;y<=5;y++){
+      for(let z=-1;z<=1;z++){
+        let leaf = new THREE.Mesh(geo,leavesMat);
+        leaf.position.set(treeX+x,y+1,treeZ+z);
+        scene.add(leaf);
+        structures.push(leaf);
+      }
+    }
+  }
+}
+
+// CREATE MOBS
+function createMobs(){
+  let geo = new THREE.BoxGeometry(blockSize,blockSize,blockSize);
+  let mat = new THREE.MeshStandardMaterial({color:0xff0000, flatShading:true});
+  for(let i=0;i<5;i++){
+    let mob = new THREE.Mesh(geo,mat);
+    mob.position.set(Math.random()*worldLimit,1,Math.random()*worldLimit);
+    scene.add(mob);
+    mobs.push({mesh:mob,dirX:(Math.random()-0.5)*0.05, dirZ:(Math.random()-0.5)*0.05});
+  }
+}
+
+// UPDATE INVENTORY UI
+function updateInventoryUI(){
+  document.getElementById('inventory').innerText = 
+    `Inventory: Diamond Pickaxe ×${inventory.diamond_pickaxe}, Stone ×${inventory.stone}, Diamond Block ×${inventory.diamond_block}`;
+}
+
+// CRAFTING FUNCTION
+function craftItem(){
+  if(inventory.stone>=2){
+    let amount = shiftPressed?Math.floor(inventory.stone/2):1;
+    inventory.stone -= 2*amount;
+    inventory.diamond_block += amount;
+    updateInventoryUI();
+  }
+}
+
+// PLAYER MOVEMENT + GRAVITY + JUMP + MOB MOVE + CRAFT LOOP
+function animate(){
   requestAnimationFrame(animate);
-
   let speed = 0.1;
-  if(keys['w']) { camera.position.z -= speed; }
-  if(keys['s']) { camera.position.z += speed; }
-  if(keys['a']) { camera.position.x -= speed; }
-  if(keys['d']) { camera.position.x += speed; }
 
-  renderer.render(scene, camera);
+  // MOVE
+  if(keys['w']) camera.position.z -= speed;
+  if(keys['s']) camera.position.z += speed;
+  if(keys['a']) camera.position.x -= speed;
+  if(keys['d']) camera.position.x += speed;
+
+  // JUMP / GRAVITY
+  if(keys[' ']) { 
+    if(onGround) { player.velocityY = 0.3; onGround=false; }
+  }
+  player.velocityY += gravity;
+  camera.position.y += player.velocityY;
+  if(camera.position.y<=1.6){camera.position.y=1.6; player.velocityY=0; onGround=true;}
+
+  // MOB RANDOM MOVE
+  mobs.forEach(m=>{
+    m.mesh.position.x += m.dirX;
+    m.mesh.position.z += m.dirZ;
+    if(Math.abs(m.mesh.position.x)>worldLimit) m.dirX*=-1;
+    if(Math.abs(m.mesh.position.z)>worldLimit) m.dirZ*=-1;
+  });
+
+  // Crafting hold
+  if(craftingActive) craftItem();
+
+  renderer.render(scene,camera);
 }
 </script>
 </body>
 </html>
-
