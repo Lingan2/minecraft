@@ -1,135 +1,132 @@
 <!DOCTYPE html>
 <html lang="az">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minecraft Asan Commandlar</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: #0f172a;
-      padding: 20px;
-      border-radius: 14px;
-      width: 450px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-    }
-    h1 { font-size: 22px; margin-bottom: 14px; text-align: center; }
-    h2 { font-size: 16px; margin: 14px 0 6px; }
-    input, select, button {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 6px;
-      border: none;
-      font-size: 14px;
-    }
-    button {
-      background: #22c55e;
-      color: #022c22;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    pre {
-      background: #020617;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 14px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minecraft Asan Commandlar</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #020617;
+  color: #e5e7eb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+.card {
+  background: #0f172a;
+  padding: 20px;
+  border-radius: 14px;
+  width: 450px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+h1 { text-align: center; }
+h2 { margin-top: 16px; }
+input, select, button {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+}
+button {
+  background: #22c55e;
+  color: #022c22;
+  font-weight: bold;
+  cursor: pointer;
+}
+pre {
+  background: #020617;
+  padding: 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>Minecraft Asan Commandlar</h1>
+<div class="card">
+<h1>Minecraft Asan Commandlar</h1>
+<input id="player" placeholder="Oyunçu adı (Steve)" />
 
-    <input id="player" placeholder="Oyunçu adı (Steve)" />
+<h2>Inventory – Item vermə</h2>
+<select id="item">
+<option value="diamond">Diamond</option>
+<option value="iron_ingot">Iron Ingot</option>
+<option value="gold_ingot">Gold Ingot</option>
+<option value="netherite_ingot">Netherite Ingot</option>
+<option value="diamond_pickaxe">Diamond Pickaxe</option>
+</select>
+<input id="count" type="number" value="1" />
+<button id="giveBtn">/give</button>
 
-    <h2>🎒 Inventory – Item vermə</h2>
-    <select id="item">
-      <option value="diamond">Diamond</option>
-      <option value="iron_ingot">Iron Ingot</option>
-      <option value="gold_ingot">Gold Ingot</option>
-      <option value="netherite_ingot">Netherite Ingot</option>
-      <option value="diamond_pickaxe">Diamond Pickaxe</option>
-    </select>
-    <input id="count" type="number" value="1" />
-    <button onclick="giveItem()">/give</button>
+<h2>Blok Qoyma</h2>
+<select id="block">
+<option value="stone">Stone</option>
+<option value="dirt">Dirt</option>
+<option value="oak_planks">Oak Planks</option>
+<option value="diamond_block">Diamond Block</option>
+</select>
+<button id="setBlockBtn">/setblock</button>
 
-    <h2>🧱 Blok Qoyma</h2>
-    <select id="block">
-      <option value="stone">Stone</option>
-      <option value="dirt">Dirt</option>
-      <option value="oak_planks">Oak Planks</option>
-      <option value="diamond_block">Diamond Block</option>
-    </select>
-    <button onclick="setBlock()">/setblock ~ ~ ~</button>
+<h2>Blok Qırma</h2>
+<button id="breakBlockBtn">/setblock ~ ~ ~ air</button>
 
-    <h2>⛏️ Blok Qırma</h2>
-    <button onclick="breakBlock()">/setblock ~ ~ ~ air</button>
+<h2>Mədənlər (Ore)</h2>
+<select id="ore">
+<option value="coal_ore">Coal Ore</option>
+<option value="iron_ore">Iron Ore</option>
+<option value="gold_ore">Gold Ore</option>
+<option value="diamond_ore">Diamond Ore</option>
+<option value="ancient_debris">Ancient Debris</option>
+</select>
+<button id="placeOreBtn">Ore qoy</button>
 
-    <h2>⛏️ Mədənlər (Ore)</h2>
-    <select id="ore">
-      <option value="coal_ore">Coal Ore</option>
-      <option value="iron_ore">Iron Ore</option>
-      <option value="gold_ore">Gold Ore</option>
-      <option value="diamond_ore">Diamond Ore</option>
-      <option value="ancient_debris">Ancient Debris</option>
-    </select>
-    <button onclick="placeOre()">Ore qoy</button>
+<h2>GameMode Toggle</h2>
+<button id="toggleGamemodeBtn">Next Gamemode</button>
 
-    <h2>🛠️ GameMode Toggle</h2>
-    <p>Virtual düymə ilə Creative → Spectator → Survival → Adventure</p>
-    <button onclick="nextGameMode()">Next Gamemode</button>
+<pre id="output">Command burada çıxacaq</pre>
+</div>
 
-    <pre id="output">Command burada çıxacaq</pre>
-  </div>
+<script>
+let gameModes = ['creative', 'spectator', 'survival', 'adventure'];
+let currentModeIndex = 0;
 
-  <script>
-    const gameModes = ['creative', 'spectator', 'survival', 'adventure'];
-    let currentModeIndex = 0;
+function playerName() {
+  return document.getElementById('player').value || 'Steve';
+}
 
-    function playerName() {
-      return document.getElementById('player').value || 'Steve';
-    }
+function output(cmd) {
+  document.getElementById('output').innerText = cmd;
+}
 
-    function giveItem() {
-      const item = document.getElementById('item').value;
-      const count = document.getElementById('count').value || 1;
-      output(`/give ${playerName()} ${item} ${count}`);
-    }
+document.getElementById('giveBtn').addEventListener('click', function() {
+  const item = document.getElementById('item').value;
+  const count = document.getElementById('count').value || 1;
+  output(`/give ${playerName()} ${item} ${count}`);
+});
 
-    function setBlock() {
-      const block = document.getElementById('block').value;
-      output(`/setblock ~ ~ ~ ${block}`);
-    }
+document.getElementById('setBlockBtn').addEventListener('click', function() {
+  const block = document.getElementById('block').value;
+  output(`/setblock ~ ~ ~ ${block}`);
+});
 
-    function breakBlock() {
-      output(`/setblock ~ ~ ~ air`);
-    }
+document.getElementById('breakBlockBtn').addEventListener('click', function() {
+  output(`/setblock ~ ~ ~ air`);
+});
 
-    function placeOre() {
-      const ore = document.getElementById('ore').value;
-      output(`/setblock ~ ~ ~ ${ore}`);
-    }
+document.getElementById('placeOreBtn').addEventListener('click', function() {
+  const ore = document.getElementById('ore').value;
+  output(`/setblock ~ ~ ~ ${ore}`);
+});
 
-    function nextGameMode() {
-      currentModeIndex = (currentModeIndex + 1) % gameModes.length;
-      output(`/gamemode ${gameModes[currentModeIndex]} ${playerName()}`);
-    }
-
-    function output(cmd) {
-      document.getElementById('output').innerText = cmd;
-    }
-  </script>
+document.getElementById('toggleGamemodeBtn').addEventListener('click', function() {
+  currentModeIndex = (currentModeIndex + 1) % gameModes.length;
+  output(`/gamemode ${gameModes[currentModeIndex]} ${playerName()}`);
+});
+</script>
 </body>
 </html>
