@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mini Minecraft Classic 3D Demo</title>
+<title>Mini Minecraft 3D Demo</title>
 <style>
 body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
 #startScreen {
@@ -13,7 +13,6 @@ body { margin:0; overflow:hidden; font-family:Arial,sans-serif; }
   z-index:10;
 }
 #startScreen h1 { font-size:36px; margin-bottom:20px; }
-#startScreen ul { list-style:none; padding:0; }
 #startScreen select, #startScreen button { margin-top:10px; padding:8px 12px; font-size:16px; }
 #inventory {
   position:absolute; top:10px; left:10px; color:white; font-size:16px; z-index:5;
@@ -30,7 +29,7 @@ canvas { display:block; }
 <body>
 
 <div id="startScreen">
-  <h1>Mini Minecraft Classic 3D</h1>
+  <h1>Mini Minecraft 3D Demo</h1>
   <p>Başlanğıc Inventory:</p>
   <ul>
     <li>Diamond Pickaxe ×1</li>
@@ -39,9 +38,9 @@ canvas { display:block; }
   </ul>
   <p>Dünyanın ölçüsünü seçin:</p>
   <select id="worldSize">
-    <option value="10">Kiçik</option>
-    <option value="20" selected>Normal</option>
-    <option value="40">Böyük</option>
+    <option value="4">Small (4 chunk)</option>
+    <option value="16" selected>Normal (16 chunk)</option>
+    <option value="64">Big (64 chunk)</option>
   </select>
   <button onclick="startGame()">Oyuna Başla</button>
 </div>
@@ -72,7 +71,9 @@ let shiftPressed = false;
 
 // START GAME
 function startGame() {
-  worldLimit = parseInt(document.getElementById('worldSize').value);
+  let chunkCount = parseInt(document.getElementById('worldSize').value); // 4,16,64
+  let blocksPerChunk = 16;
+  worldLimit = (chunkCount * blocksPerChunk)/2; // -worldLimit..worldLimit
   document.getElementById('startScreen').style.display = 'none';
   init();
   animate();
@@ -90,42 +91,39 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  const light = new THREE.DirectionalLight(0xffffff,1);
-  light.position.set(5,10,7.5);
+  // LIGHT
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+  light.position.set(5, 10, 7.5);
   scene.add(light);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-  // WORLD: grass + dirt + ores
-  let geo = new THREE.BoxGeometry(blockSize,blockSize,blockSize);
-  let grassMat = new THREE.MeshStandardMaterial({color:0x228B22, flatShading:true});
-  let dirtMat = new THREE.MeshStandardMaterial({color:0x8B4513, flatShading:true});
-  let stoneMat = new THREE.MeshStandardMaterial({color:0x808080, flatShading:true});
-  let diamondMat = new THREE.MeshStandardMaterial({color:0x00FFFF, flatShading:true});
+  // WORLD
+  let geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+  let grassMat = new THREE.MeshStandardMaterial({color:0x228B22});
+  let dirtMat = new THREE.MeshStandardMaterial({color:0x8B4513});
+  let stoneMat = new THREE.MeshStandardMaterial({color:0x808080});
+  let diamondMat = new THREE.MeshStandardMaterial({color:0x00FFFF});
 
   for(let x=-worldLimit;x<=worldLimit;x++){
     for(let z=-worldLimit;z<=worldLimit;z++){
-      // grass top
-      let top = new THREE.Mesh(geo, grassMat);
-      top.position.set(x,0,z);
-      scene.add(top);
-      blocks.push(top);
+      let height = Math.floor(Math.random()*3); // Random terrain height 0-2
+      for(let y=0;y<=height;y++){
+        let mat = (y===height)? grassMat : dirtMat;
+        let cube = new THREE.Mesh(geo, mat);
+        cube.position.set(x, y, z);
+        scene.add(cube);
+        blocks.push(cube);
 
-      // dirt below
-      for(let y=-1; y>=-3; y--){
-        let dirt = new THREE.Mesh(geo,dirtMat);
-        dirt.position.set(x,y,z);
-        scene.add(dirt);
-        blocks.push(dirt);
-
-        // random stone/diamond ore
-        if(Math.random()<0.1){
-          let stone = new THREE.Mesh(geo,stoneMat);
-          stone.position.set(x,y-1,z);
+        // Random stone/diamond ore below ground
+        if(y<height && Math.random()<0.1){
+          let stone = new THREE.Mesh(geo, stoneMat);
+          stone.position.set(x, y-1, z);
           scene.add(stone);
           ores.push(stone);
         }
-        if(Math.random()<0.02){
-          let diamond = new THREE.Mesh(geo,diamondMat);
-          diamond.position.set(x,y-1,z);
+        if(y<height && Math.random()<0.02){
+          let diamond = new THREE.Mesh(geo, diamondMat);
+          diamond.position.set(x, y-1, z);
           scene.add(diamond);
           ores.push(diamond);
         }
@@ -157,11 +155,11 @@ function init() {
   document.getElementById('crafting').addEventListener('mouseup', ()=>craftingActive=false);
 }
 
-// STRUCTURES & TREES
+// STRUCTURES
 function createStructures(){
   let geo = new THREE.BoxGeometry(blockSize,blockSize,blockSize);
-  let mat = new THREE.MeshStandardMaterial({color:0x8B4513, flatShading:true});
-  let leavesMat = new THREE.MeshStandardMaterial({color:0x00FF00, flatShading:true});
+  let mat = new THREE.MeshStandardMaterial({color:0x8B4513});
+  let leavesMat = new THREE.MeshStandardMaterial({color:0x00FF00});
 
   // Random house
   let baseX = Math.floor(Math.random()*worldLimit*0.5);
@@ -201,7 +199,7 @@ function createStructures(){
 // MOBS
 function createMobs(){
   let geo = new THREE.BoxGeometry(blockSize,blockSize,blockSize);
-  let mat = new THREE.MeshStandardMaterial({color:0xff0000, flatShading:true});
+  let mat = new THREE.MeshStandardMaterial({color:0xff0000});
   for(let i=0;i<5;i++){
     let mob = new THREE.Mesh(geo,mat);
     mob.position.set(Math.random()*worldLimit,1,Math.random()*worldLimit);
@@ -210,7 +208,7 @@ function createMobs(){
   }
 }
 
-// WINDOW RESIZE
+// RESIZE
 function onWindowResize(){
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
@@ -263,12 +261,12 @@ function onMouseDown(event){
   }
 }
 
-// PLAYER MOVEMENT + GRAVITY + JUMP + MOB MOVE + CRAFT LOOP
+// ANIMATE
 function animate(){
   requestAnimationFrame(animate);
   let speed = 0.1;
 
-  // MOVE
+  // MOVE W/A/S/D
   if(keys['w']) camera.position.z -= speed;
   if(keys['s']) camera.position.z += speed;
   if(keys['a']) camera.position.x -= speed;
